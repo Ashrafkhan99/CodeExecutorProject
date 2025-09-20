@@ -1,4 +1,5 @@
 ## System Flowchart
+```mermaid
 flowchart LR
 Client[Client: UI or API Consumer]
 API[Spring Boot API: Controllers, Filters, Services]
@@ -11,5 +12,3 @@ API --> DB
 API --> Docker
 API --> Metrics
 API -.startup.-> Flyway
-
-text
