@@ -174,16 +174,16 @@ curl -s -X POST http://localhost:8080/api/execute \
 
 ```mermaid
 flowchart LR
-    Client[Client / Frontend\nSwagger UI, Postman] -->|HTTPS| API[(Spring Boot REST API)]
-    subgraph API Layer
-      API --> SEC[JWT Auth + Filters\n(RequestId, Logging, RateLimit)]
-      API --> LANG[Language Service\nlist enabled languages]
-      API --> EXE[Execute Service\nPOST /api/execute]
-      SEC --> ADM[Admin Endpoints\nlanguages + submissions]
+    Client[Client / Frontend<br/>Swagger UI, Postman] -->|HTTPS| API[(Spring Boot REST API)]
+    subgraph "API Layer"
+      API --> SEC[JWT Auth + Filters<br/>(RequestId, Logging, RateLimit)]
+      API --> LANG[Language Service<br/>list enabled languages]
+      API --> EXE[Execute Service<br/>POST /api/execute]
+      SEC --> ADM[Admin Endpoints<br/>languages & submissions]
     end
 
-    EXE --> ORCH[Execution Orchestrator\nThreadPool + Semaphores + Fairness]
-    ORCH --> RUN[Docker Runner\nspawn language container per request]
+    EXE --> ORCH[Execution Orchestrator<br/>ThreadPool + Semaphores + Fairness]
+    ORCH --> RUN[Docker Runner<br/>spawn language container per request]
 
     RUN -.->|docker.sock| DOCKER[(Host Docker Daemon)]
     DOCKER --> PY[(Python 3.11 non-root image)]
@@ -193,6 +193,7 @@ flowchart LR
     API --- DB[(PostgreSQL 16)]
     API --- METRICS[(Actuator + Prometheus)]
 ```
+
 
 * **API**: `/api/auth/*`, `/api/languages`, `/api/execute`, `/api/admin/*`
 * **Security chain**: `RequestId` → `JWT` → `RateLimit` → `RequestLogging`
