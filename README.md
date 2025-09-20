@@ -1,35 +1,48 @@
-# CodeExecutorProject
+# CodeRank Executor
 
-*Run code snippets securely (Python, Java, C++ …) through a simple web API backed by Docker sandboxes.*
+*Secure, Docker-based backend service that compiles and runs user code (Python, Java, C/C++) with strict isolation, JWT auth, rate-limits, and audit logs.*
 
-> Self-hosted Spring Boot service that compiles/runs user code in **isolated** containers, with JWT auth, rate limiting, metrics, and an admin API for language management.
+![Project Logo/Demo](https://img.shields.io/badge/CodeRank-Executor-blue.svg "CodeRank Executor")
+
+[![Build](https://img.shields.io/badge/build-Maven_Java_17-brightgreen.svg)](#)
+[![API](https://img.shields.io/badge/docs-OpenAPI_\(Swagger\)-blue.svg)](#-api-quick-peek)
+[![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](#-project-details)
+[![Status](https://img.shields.io/badge/status-Active_Development-orange.svg)](#-project-details)
 
 ---
 
-## Project Overview (What & Why)
+## Why you’ll care (in 30 seconds)
 
-* **What it does:** A REST API where clients submit code (and optional input) and receive `stdout`, `stderr`, and status.
-* **Problem it solves:** Avoids the pain of installing/maintaining multiple compilers/runtimes locally; runs untrusted code **safely** in resource-limited containers.
+**Non-technical readers:** This service lets people paste code (e.g., Python), runs it safely in an isolated “sandbox”, and returns the output. It’s designed so one user’s code cannot harm the system or other users.
+
+**Developers & contributors:** It’s a Spring Boot + PostgreSQL system that spawns per-request language containers (Docker) with tight time/memory limits, JWT authentication, simple admin endpoints, rate-limiting, and Prometheus metrics, all packaged with Docker Compose.
+
+---
+
+## What it does & why it exists
+
+* **What it does (plain English):** Accepts code via a REST API, runs it inside a locked-down Docker container for the chosen language, and returns `stdout`, `stderr`, and a status like `SUCCESS` or `TIMEOUT`.
+* **Problem it solves:** Running untrusted code is risky and complex. This gives you a safe, repeatable way to execute code at scale without giving users access to your servers.
 * **Key benefits:**
 
-  * 🔒 Secure sandboxing (no network, limited CPU/RAM, read-only FS)
-  * 🧰 Multi-language support via pluggable Docker images
-  * 🧾 Submission history stored in PostgreSQL
-  * 🛡️ JWT auth + per-user/IP rate limits
-  * 📈 Prometheus/Actuator metrics
-* **Who it’s for:** Learning platforms, interview systems, coding challenge sites, internal tools needing “run code” securely.
+  * **Safety:** Every run happens in a minimal, non-root container with limits.
+  * **Simplicity:** A single `/api/execute` endpoint and a `/api/languages` catalog.
+  * **Observability:** Prometheus metrics and health checks built in.
+  * **Control:** JWT auth, per-user/IP rate-limits, and admin endpoints.
+* **Who it’s for:** Ed-tech platforms, coding challenge sites, internal tools, or any product that must run user code securely.
 
 ---
 
-## Key Features
+## ✨ Key Features
 
-* **Multi-language execution** – Send source, get output. Java/C++ compile, Python runs directly.
-* **Strong isolation** – Containers run with `--network none`, `--cpus`, memory, PID and tmpfs limits.
-* **JWT Authentication** – `/api/auth/register`, `/api/auth/login`, `/api/auth/me`.
-* **Submission logging** – Every run saved (source, stdin, stdout, stderr, status, time).
-* **Rate limiting** – Per user/IP requests-per-minute; returns HTTP `429` when exceeded.
-* **Admin language management** – Enable/disable languages; update image/tag and commands.
-* **Observability** – Actuator health + Prometheus metrics for executions and timing.
+* **Secure execution sandbox** — Runs code in short-lived Docker containers (non-root user, minimal images) to isolate processes.
+* **Multi-language support** — Ships with Python 3.11, Java 17, and C++17; easily add more by defining a Dockerfile + commands.
+* **Straightforward API** — `POST /api/execute` with `{ language, source, stdin? }` returns output and timing.
+* **JWT authentication** — Register/login to get a token; pass it as `Authorization: Bearer <token>`.
+* **Rate-limiting** — Per user/IP limits for `POST /api/execute` to prevent abuse and protect capacity.
+* **Admin controls** — Toggle languages and inspect recent submissions with role-based access (`ROLE_ADMIN`).
+* **Observability** — `/actuator/health` and `/actuator/prometheus` (Micrometer + Prometheus).
+* **OpenAPI docs** — Explore & try endpoints at Swagger UI.
 
 ---
 
@@ -37,251 +50,371 @@
 
 ### What You’ll Need
 
-* **Java 17 + Maven** – Build the Spring Boot API.
-* **Docker & Docker Compose** – Build language images and run the stack.
-* **Host Docker Engine** – API mounts `/var/run/docker.sock` to launch sandboxes.
+* **Docker & Docker Compose** (to run the DB, app, and spawn sandbox containers)
+* **\~4 GB RAM free** (container builds + app runtime)
+* **Port 8080 and 5432 available** (app & DB defaults)
 
-### Installation (Step-by-Step)
+> Why Docker? The executor launches **language containers** per request. It binds to your host’s Docker daemon via `/var/run/docker.sock`.
 
-1. **Clone**
+### One-command bring-up (recommended)
 
-   ```bash
-   git clone <your-repo-url>.git
-   cd CodeExecutorProject
-   ```
+```bash
+# 0) (Optional) Build language images locally (faster first run)
+./languages/build-all.sh
 
-2. **Build language images** (Python, Java, C++ …)
+# 1) Start everything (Postgres + App)
+docker compose up --build
+```
 
-   ```bash
-   cd coderank-executor/languages
-   ./build-all.sh
-   ```
+What this does:
 
-   *Builds images like `coderank/lang-python:3.11`, `coderank/lang-java:17`, etc.*
+* Builds the app jar (Maven) and language images (if you ran step 0).
+* Starts PostgreSQL with DB `coderank` and user/pass `coderank/coderank`.
+* Starts the Spring Boot app with the `docker` profile and a JWT secret.
 
-3. **Review environment**
+> After it’s healthy, visit:
+> **Swagger UI:** [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
+> **Health:** [http://localhost:8080/api/health](http://localhost:8080/api/health)
 
-   * Open `coderank-executor/docker-compose.yml`
-   * Set `CODERANK_JWT_SECRET` to a strong random value.
-   * Optional: change DB credentials/ports.
+### Local dev (without Compose)
 
-4. **Start services**
+```bash
+# 1) Run Postgres (Docker)
+docker run --name cr-db -e POSTGRES_DB=coderank \
+  -e POSTGRES_USER=coderank -e POSTGRES_PASSWORD=coderank \
+  -p 5432:5432 -d postgres:16
 
-   ```bash
-   cd ..
-   docker-compose up -d
-   ```
+# 2) Build language images (once)
+./languages/build-all.sh
 
-   *Starts PostgreSQL and the API on `http://localhost:8080`.*
+# 3) Run the Spring app (host must have Docker)
+export APP_SECURITY_JWT_SECRET="$(openssl rand -base64 48)"
+export APP_SECURITY_JWT_ISSUER="coderank-executor"
+export APP_SECURITY_JWT_EXPIRYMINUTES=60
+mvn spring-boot:run
+```
 
-5. **Sanity check**
+What this does:
 
-   ```bash
-   curl http://localhost:8080/actuator/health
-   # {"status":"UP"}
-   ```
+* Boots Postgres for dev, prepares language containers, and starts the API with a strong JWT secret.
 
 ---
 
-## How to Use (Examples)
+## 🧪 How to Use (Copy-paste examples)
 
-### 1) Register → get JWT
-
-```bash
-curl -X POST http://localhost:8080/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"alice@example.com","password":"Secret123"}'
-```
-
-Response:
-
-```json
-{ "token":"<JWT>", "tokenType":"Bearer", "expiresInSeconds":1800 }
-```
-
-### 2) Login (if existing user)
+### 1) Register → Login → Get Token
 
 ```bash
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"alice@example.com","password":"Secret123"}'
+# Register
+curl -s -X POST http://localhost:8080/api/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"me@example.com","password":"Str0ngP@ss!"}'
+# → {"token":"<jwt>","expiresIn":3600}
+
+# Login
+curl -s -X POST http://localhost:8080/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"me@example.com","password":"Str0ngP@ss!"}'
+# → {"token":"<jwt>","expiresIn":3600}
 ```
 
-### 3) Run Python
+Save the `token` value (JWT). Use it in `Authorization`:
+
+```
+Authorization: Bearer <jwt>
+```
+
+### 2) List enabled languages
 
 ```bash
-curl -X POST http://localhost:8080/api/execute \
-  -H "Authorization: Bearer <JWT>" \
-  -H "Content-Type: application/json" \
+curl -s http://localhost:8080/api/languages
+# → [{"code":"python","name":"Python 3.11","version":"3.11"}, ...]
+```
+
+### 3) Run “Hello, World!” in Python
+
+```bash
+curl -s -X POST http://localhost:8080/api/execute \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <jwt>" \
+  -d '{"language":"python","source":"print(\"Hello, CodeRank!\")"}'
+```
+
+**Expected result (business meaning):** You’ll get `stdout: "Hello, CodeRank!\n"`, `stderr: ""`, `status: "SUCCESS"`, and an `execTimeMs` (used in analytics or leaderboards).
+
+### 4) Run Java & C++ (copies you can tweak)
+
+```bash
+# Java
+curl -s -X POST http://localhost:8080/api/execute \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <jwt>" \
   -d '{
-        "language":"python",
-        "source":"print(\\"Hello, world!\\")",
-        "stdin":""
-      }'
-```
+    "language":"java",
+    "source":"public class Main{public static void main(String[]a){System.out.println(\"Hi\");}}"
+  }'
 
-Example response:
-
-```json
-{
-  "stdout":"Hello, world!\n",
-  "stderr":"",
-  "status":"SUCCESS",
-  "execTimeMs": 12
-}
-```
-
-### 4) Run Java
-
-```bash
-curl -X POST http://localhost:8080/api/execute \
-  -H "Authorization: Bearer <JWT>" \
-  -H "Content-Type: application/json" \
+# C++
+curl -s -X POST http://localhost:8080/api/execute \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <jwt>" \
   -d '{
-        "language":"java",
-        "source":"public class Main { public static void main(String[] args){ System.out.println(2+2); } }"
-      }'
+    "language":"cpp",
+    "source":"#include <iostream>\nint main(){std::cout<<\"Hi\";}"
+  }'
 ```
 
-**Status codes** you may see: `SUCCESS`, `COMPILE_ERROR`, `RUNTIME_ERROR`, `TIMEOUT`, `INTERNAL_ERROR`.
+> **Statuses you may see:** `SUCCESS`, `COMPILE_ERROR`, `RUNTIME_ERROR`, `TIMEOUT`, `INTERNAL_ERROR`.
 
 ---
 
 ## 🔧 Technical Details
 
-### High-Level Architecture (HLD)
+### Architecture Overview
 
 ```mermaid
 flowchart LR
-Client[Client: UI or API Consumer]
-API[Spring Boot API: Controllers, Filters, Services]
-DB[(PostgreSQL: Users, Languages, Submissions)]
-Docker[Docker Engine: Sandbox Containers]
-Metrics[(Prometheus / Actuator)]
-Flyway[Flyway: DB migrations]
-Client -->|REST JSON| API
-API --> DB
-API --> Docker
-API --> Metrics
-API -.startup.-> Flyway
+    Client[Client / Frontend\nSwagger UI, Postman] -->|HTTPS| API[(Spring Boot REST API)]
+    subgraph API Layer
+      API --> SEC[JWT Auth + Filters\n(RequestId, Logging, RateLimit)]
+      API --> LANG[Language Service\nlist enabled languages]
+      API --> EXE[Execute Service\nPOST /api/execute]
+      SEC --> ADM[Admin Endpoints\nlanguages + submissions]
+    end
+
+    EXE --> ORCH[Execution Orchestrator\nThreadPool + Semaphores + Fairness]
+    ORCH --> RUN[Docker Runner\nspawn language container per request]
+
+    RUN -.->|docker.sock| DOCKER[(Host Docker Daemon)]
+    DOCKER --> PY[(Python 3.11 non-root image)]
+    DOCKER --> JV[(Java 17 non-root image)]
+    DOCKER --> CP[(C++17 non-root image)]
+
+    API --- DB[(PostgreSQL 16)]
+    API --- METRICS[(Actuator + Prometheus)]
 ```
 
-**Flow summary**
+* **API**: `/api/auth/*`, `/api/languages`, `/api/execute`, `/api/admin/*`
+* **Security chain**: `RequestId` → `JWT` → `RateLimit` → `RequestLogging`
+* **Concurrency**: Bounded thread-pool + semaphores to cap total and per-user in-flight runs
+* **Runtime**: Each execution writes source to container, optional compile, then runs with a hard timeout
 
-1. Client calls `/api/execute` with JWT.
-2. Security filters: request ID, rate limit, JWT validate.
-3. Service loads language config → submits task to orchestrator.
-4. Orchestrator enforces global/per-user concurrency → calls Docker runner.
-5. Docker runner builds secure `docker run` (no network, CPU/RAM/PID limits, read-only FS, tmpfs `/sandbox`) and executes compile/run commands.
-6. Capture `stdout/stderr/exit`, map to status, persist `Submission`, return result.
-
-### Entity-Relationship Diagram (ERD)
+### Entity-Relationship (ER) Diagram
 
 ```mermaid
 erDiagram
-  USER {
-    UUID id PK
-    string email
-    string password_hash
-    string role
-    timestamp created_at
-  }
+    USERS ||--o{ SUBMISSIONS : "has many"
+    LANGUAGES ||--o{ SUBMISSIONS : "used by"
 
-  EXECLANGUAGE {
-    string code PK
-    string name
-    string image
-    string file_name
-    string compile_cmd
-    string run_cmd
-    string version
-    boolean enabled
-  }
+    USERS {
+      UUID id PK
+      VARCHAR email "unique"
+      VARCHAR password_hash
+      VARCHAR role "e.g. USER/ADMIN"
+      TIMESTAMP created_at
+    }
 
-  SUBMISSION {
-    UUID id PK
-    UUID user_id FK
-    string language_code FK
-    text source
-    text stdin
-    text stdout
-    text stderr
-    string status
-    int exec_time_ms
-    timestamp created_at
-  }
+    LANGUAGES {
+      VARCHAR code PK "e.g. python, java, cpp"
+      VARCHAR display_name
+      VARCHAR image "docker tag"
+      VARCHAR file_name "main file in sandbox"
+      VARCHAR compile_cmd "nullable"
+      VARCHAR run_cmd
+      VARCHAR version
+      BOOLEAN enabled
+    }
 
-  USER ||--o{ SUBMISSION : "has many"
-  EXECLANGUAGE ||--o{ SUBMISSION : "used by"
+    SUBMISSIONS {
+      UUID id PK
+      UUID user_id FK "nullable for public runs"
+      VARCHAR language_code FK
+      TEXT source_code
+      TEXT stdin
+      TEXT stdout
+      TEXT stderr
+      VARCHAR status "SUCCESS/COMPILE_ERROR/..."
+      INTEGER exec_time_ms
+      INTEGER memory_kb
+      TIMESTAMP created_at
+    }
 ```
+
+> This matches `V1__init.sql` and the `@Entity` classes (`User`, `ExecLanguage`, `Submission`).
 
 ### Technologies Used
 
-* **Spring Boot 3 (Java 17):** REST, Security (JWT), Data JPA, Actuator
-* **PostgreSQL + Flyway:** persistence & migrations
-* **Docker:** isolated code execution per request
-* **Micrometer + Prometheus:** metrics
-* **Maven:** build tooling
+* **Spring Boot 3 (Java 17)** — REST API, security filters, validation
+* **PostgreSQL + Flyway** — schema migration and persistence
+* **Docker** — per-execution language sandboxes
+* **Micrometer + Prometheus + Actuator** — metrics and health
+* **springdoc-openapi** — Swagger UI for interactive docs
+* **BCrypt + JWT (JJWT)** — password hashing and token issuance
 
-### Project Structure (typical)
+### Project Structure
 
 ```
 coderank-executor/
-├─ src/main/java/com/coderank/...
-│  ├─ auth/           # AuthController, JwtService, UserDetails
-│  ├─ execute/        # ExecuteController, ExecuteService, Orchestrator, DockerRunner
-│  ├─ language/       # LanguageController, AdminLanguageController, ExecLanguage entity
-│  ├─ submission/     # Submission entity/repo, AdminSubmissionController
-│  ├─ config/         # SecurityConfig, filters (JWT, RateLimit, RequestId), metrics
-│  └─ ...
-├─ src/main/resources/
-│  ├─ application.yml
-│  └─ db/migration/   # Flyway migrations (schema + seed languages)
-├─ languages/
-│  ├─ build-all.sh    # builds coderank/lang-* images
-│  └─ <language-dockerfiles>/
-├─ docker-compose.yml
-└─ Dockerfile
+├── docker-compose.yml            # Postgres + App (binds docker.sock)
+├── Dockerfile                    # Build & runtime image for the API
+├── languages/                    # Dockerfiles for runtimes
+│   ├── build-all.sh
+│   ├── python/Dockerfile
+│   ├── java/Dockerfile
+│   └── cpp/Dockerfile
+├── src/main/java/com/coderank/executor/
+│   ├── auth/                     # Register/Login + DTOs
+│   ├── admin/                    # Admin endpoints (languages, submissions)
+│   ├── execute/                  # Orchestrator, Docker runner, API DTOs
+│   ├── language/                 # Language entity + service
+│   ├── security/                 # JWT, SecurityConfig
+│   ├── user/                     # User entity + repository
+│   └── web/                      # Health, rate-limit, logging filters
+├── src/main/resources/
+│   ├── application.yml           # Base config (profiles, flyway)
+│   ├── application-dev.yml       # Local dev DB + rate-limit
+│   ├── application-docker.yml    # Compose profile (DB host= db)
+│   └── db/migration/V1__init.sql # ERD-compatible schema
+└── pom.xml
 ```
 
 ---
 
-## Advanced Usage
+## ⚙️ Configuration & Advanced Usage
 
-### Configuration (environment)
+### Configuration keys (with sensible defaults)
+
+Put these in `application.yml` or set as environment variables (Spring maps `APP_SECURITY_JWT_SECRET` → `app.security.jwt.secret`):
 
 ```yaml
-# application.yml (examples)
+# Security & JWT
 app:
-  exec:
-    timeoutSeconds: 5            # per-program time limit
-    overallTimeoutSeconds: 12    # hard stop for container
-    memory: 256m                 # Docker memory limit
-    cpus: 0.5                    # Docker CPU quota
-    pidsLimit: 128               # max processes
-    tmpfsSizeMb: 64              # writable /sandbox size
+  security:
+    jwt:
+      issuer: "coderank-executor"
+      expiryMinutes: 60
+      secret: ${APP_SECURITY_JWT_SECRET}   # base64-encoded key (>= 256 bits)
   ratelimit:
     execute:
-      perMinute: 30              # requests per minute per user/IP
-spring:
-  datasource:
-    url: jdbc:postgresql://db:5432/coderank
-    username: coderank
-    password: coderank
-jwt:
-  secret: ${CODERANK_JWT_SECRET}
+      perMinute: 30
+
+# Execution concurrency controls
+app:
+  exec:
+    concurrent:
+      maxConcurrent: 6         # total concurrent runs
+      queueCapacity: 20        # queued submissions
+      submitTimeoutMs: 150     # fail fast if queue is full
+      permitTimeoutMs: 200     # acquire-run permit timeout
+      perUserMaxInFlight: 2    # fairness per user/IP
 ```
 
-### Adding a new language
+> **Tip:** Generate a strong secret: `openssl rand -base64 48` and pass it as `APP_SECURITY_JWT_SECRET`.
 
-1. Create a Docker image with the compiler/interpreter.
-2. Insert/update `ExecLanguage` (via admin API) with:
+### Admin endpoints (require `ROLE_ADMIN`)
 
-   * `code`, `name`, `image`, `fileName`, `compileCmd` (if needed), `runCmd`, `version`, `enabled`.
+* `GET /api/admin/submissions?limit=50` — newest submissions
+* `PATCH /api/admin/languages/{code}` — enable/disable or change commands/image
 
-### Enabling CORS (future frontend)
+Make your user an admin (dev only):
 
-Add a WebMvc config or `@CrossOrigin` on controllers to allow your frontend origin.
+```sql
+-- psql -h localhost -U coderank -d coderank
+UPDATE users SET role = 'ADMIN' WHERE email = 'me@example.com';
+```
+
+### Metrics & Health
+
+* `GET /actuator/health` — basic health
+* `GET /actuator/prometheus` — scrapeable metrics (e.g., `coderank_execute_requests_total`)
+
+---
+
+## 🧭 End-to-end Test Plan (step-by-step)
+
+1. **Build language images** (if not using Compose autobuild)
+
+   ```bash
+   ./languages/build-all.sh
+   ```
+
+   *Ensures Python/Java/C++ runtimes exist locally.*
+
+2. **Start services**
+
+   ```bash
+   docker compose up --build
+   ```
+
+   *Brings up Postgres and the API. Wait until logs say `Started CoderankExecutorApplication`.*
+
+3. **Open API docs**
+
+   * [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
+     *Confirms routing and OpenAPI are live.*
+
+4. **Register & Login**
+
+   * Use Swagger UI or the curl commands above to get a JWT.
+     *Confirms DB writes and JWT issuance.*
+
+5. **List languages**
+
+   ```bash
+   curl -s http://localhost:8080/api/languages
+   ```
+
+   *Confirms seed data / Flyway migration.*
+
+6. **Run sample programs**
+
+   * Python “hello” (expected `SUCCESS` and `stdout` as shown).
+   * Java and C++ variants (compile once, then run).
+     *Confirms Docker socket access and container lifecycle.*
+
+7. **Rate-limit check (optional)**
+
+   * Rapidly fire > `perMinute` requests to `/api/execute`.
+   * Expected: JSON error indicating rate limit exceeded.
+     *Confirms protective throttling works.*
+
+8. **Admin list submissions (optional)**
+
+   * Promote your user to admin (SQL above).
+   * `GET /api/admin/submissions?limit=10`
+     *Confirms persistence and admin filter.*
+
+9. **Metrics**
+
+   * `curl -s http://localhost:8080/actuator/prometheus | head`
+     *Confirms Micrometer export.*
+
+10. **Troubleshooting common issues**
+
+    * **DB auth error** (`FATAL: password authentication failed for user "coderank"`):
+      Ensure Postgres is healthy and creds match your profile (`application-*.yml`) and environment.
+
+      ```bash
+      docker exec -it <db-container> psql -U postgres -c \
+        "ALTER USER coderank WITH PASSWORD 'coderank';"
+      ```
+    * **Docker socket permission**: App container must mount `/var/run/docker.sock`. This is already configured in `docker-compose.yml`.
+    * **JWT 401 errors**: Verify `Authorization: Bearer <jwt>` header and that your clock is correct (token expiry).
+    * **Timeouts** on heavy code: The runner enforces a strict time limit; reduce workload or increase allowed time in language commands (advanced).
+
+---
+
+## 🔌 API Quick Peek
+
+* `POST /api/auth/register` → `{ token, expiresIn }`
+* `POST /api/auth/login` → `{ token, expiresIn }`
+* `GET /api/auth/me` → `{ id, email, role }`
+* `GET /api/languages` → `[ { code, name, version } ]`
+* `POST /api/execute` → `{ stdout, stderr, status, execTimeMs }`
+* `GET /api/admin/submissions` *(ADMIN)* → `[ { id, userId, languageCode, ... } ]`
+* `PATCH /api/admin/languages/{code}` *(ADMIN)* → update language config
+
+> See everything interactively in **Swagger UI**.
 
 ---
 
@@ -289,146 +422,119 @@ Add a WebMvc config or `@CrossOrigin` on controllers to allow your frontend orig
 
 We welcome contributions!
 
-**New contributors**
+### For New Contributors
 
-1. Open an issue for bugs/ideas.
-2. Improve docs where unclear.
-3. Try “good first issue” labels (if present).
+1. **Report bugs:** Found something broken? [Open an issue](#).
+2. **Suggest features:** Have an idea? [Start a discussion](#).
+3. **Improve docs:** See unclear instructions? Submit a fix!
 
-**Developers**
+### For Developers
 
-1. Fork & clone.
-2. Create a branch: `git checkout -b feature/new-runtime`
-3. Implement + add tests.
-4. Run locally (`docker-compose up -d`).
-5. Open a PR describing changes.
+1. Fork the repository
+2. Create your feature branch
+   `git checkout -b feature/amazing-feature`
+3. Make your changes (keep code formatted)
+4. Add/adjust tests if applicable
+5. Run the test plan above locally
+6. Submit a pull request
+
+*See `CONTRIBUTING.md` (recommended) for code style, commit message format, and review guidelines.*
 
 ---
 
-## Support, FAQ & Troubleshooting
+## 🧩 Advanced Notes (power users)
 
-**Where to get help:** GitHub Issues in this repo.
+* **Add a new language:**
+  Create `languages/<name>/Dockerfile`, build and push an image, then seed a row in `languages` with:
 
-**FAQ**
+  * `code`, `display_name`, `image`, `file_name`, `compile_cmd?`, `run_cmd`, `version`, `enabled`
+* **Tune throughput:**
+  Adjust `app.exec.concurrent.*` for pool size, queue length, and fairness.
+* **Customize rate limits:**
+  Set `app.ratelimit.execute.perMinute` to a value appropriate for your capacity.
+* **Logging correlation:**
+  Every response has an `X-Request-Id` header; include it in bug reports.
 
-* *Why did my code time out?*
-  Execution exceeded `app.exec.timeoutSeconds` or overall container limit. Increase for trusted scenarios.
-* *I see HTTP 429.*
-  Rate limit or in-flight concurrency exceeded. Space requests out or adjust limits.
-* *Docker permission errors?*
-  Ensure your user can talk to Docker (`docker` group on Linux).
+---
 
-**Troubleshooting checklist**
+## 🧑‍💼 Support & Community
 
-* `docker ps` shows API and DB up?
-* `curl /actuator/health` → `{"status":"UP"}`?
-* Language images built (`docker images | grep coderank/lang-`)?
-* JWT secret set and consistent across instances?
+* **Docs:** Swagger UI + this README
+* **Help:** Open an issue with steps to reproduce (include `X-Request-Id`)
+* **FAQ (quick):**
+
+  * *Can anonymous users execute?* Yes if allowed, but results still respect rate-limit by IP. (In this template, endpoints require auth by default except health/docs—update `SecurityConfig` if you want public runs.)
+  * *Where are files stored?* Nothing persists in containers; outputs and metadata are stored in Postgres via `Submission`.
+  * *Is code scanned?* The primary defense is sandboxing + time limits; add static checks if your use case requires.
 
 ---
 
 ## 📋 Project Details
 
-* **Status:** Active development
-* **Version:** 0.1.0
-* **License:** MIT (adjust if different)
-* **Maintainer:** Ashraf Khan
+* **Status:** Active Development
+* **Version:** 0.0.1-SNAPSHOT
+* **License:** MIT — see `LICENSE`
+* **Maintainers:** CodeRank Team (add handles/emails here)
 
-**Roadmap**
+### Roadmap
 
-* ✅ Multi-language sandbox, JWT auth, rate limit, metrics
-* 🚧 More languages, async job pattern, better admin UX
-* 📋 Frontend (with CORS), Kubernetes manifests, richer analytics
+* ✅ Python/Java/C++ sandboxes
+* ✅ JWT auth, rate-limits, admin endpoints
+* ✅ OpenAPI + Prometheus metrics
+* 🚧 Language whitelisting per tenant/user
+* 🚧 Persistent artifacts (optional) with signed URLs
+* 📋 Pluggable runners (Firecracker/OCI) & GPU languages
+
+---
+
+## Accessibility, Formatting & Style
+
+* Images & diagrams have alt text.
+* Headings follow a logical hierarchy.
+* Code blocks are copy-paste ready and annotated.
+* Links use descriptive text.
 
 ---
 
-## ✅ Step-by-Step Testing Procedure
+## Appendix A — Sample `application-docker.yml` (for reference)
 
-Use this as a full validation script after a clean start.
+```yaml
+spring:
+  datasource:
+    url: jdbc:postgresql://db:5432/coderank
+    username: coderank
+    password: coderank
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
 
-1. **Clean & start**
+app:
+  security:
+    jwt:
+      issuer: "coderank-executor"
+      expiryMinutes: 60
+      secret: ${APP_SECURITY_JWT_SECRET}
+  ratelimit:
+    execute:
+      perMinute: 30
 
-```bash
-cd coderank-executor
-docker-compose down -v
-docker-compose up -d
-sleep 5
-curl http://localhost:8080/actuator/health
+app:
+  exec:
+    concurrent:
+      maxConcurrent: 6
+      queueCapacity: 20
+      submitTimeoutMs: 150
+      permitTimeoutMs: 200
+      perUserMaxInFlight: 2
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
 ```
 
-Expected: `{"status":"UP"}`
-
-2. **Register & auth**
-
-```bash
-TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"qa@example.com","password":"Secret123"}' | jq -r .token)
-echo $TOKEN
-```
-
-Expected: a non-empty JWT printed.
-
-3. **List available languages (public)**
-
-```bash
-curl -s http://localhost:8080/api/languages | jq
-```
-
-Expected: array with `python`, `java`, `cpp` (depending on seed).
-
-4. **Happy path: Python**
-
-```bash
-curl -s -X POST http://localhost:8080/api/execute \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"language":"python","source":"print(1+1)"}' | jq
-```
-
-Expected: `stdout: "2\n"`, `status: "SUCCESS"`.
-
-5. **Compile error: Java**
-
-```bash
-curl -s -X POST http://localhost:8080/api/execute \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"language":"java","source":"public class Main { public static void main(String[] args) { SYstem.out.println(42); } }"}' | jq
-```
-
-Expected: `status: "COMPILE_ERROR"`, error details in `stderr`.
-
-6. **Runtime error: Python**
-
-```bash
-curl -s -X POST http://localhost:8080/api/execute \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"language":"python","source":"print(1/0)"}' | jq
-```
-
-Expected: `status: "RUNTIME_ERROR"`, ZeroDivision traceback in `stderr`.
-
-7. **Timeout: Python (infinite loop)**
-
-```bash
-curl -s -X POST http://localhost:8080/api/execute \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"language":"python","source":"while True: pass"}' | jq
-```
-
-Expected: `status: "TIMEOUT"`.
-
-8. **Rate limit check (optional)**
-   Run 35 quick calls in under a minute; some should return `429 Too Many Requests`. If not, adjust `app.ratelimit.execute.perMinute`.
-
-9. **Admin sanity (if you have an admin token)**
-
-* List admin languages, update a language’s `enabled` flag, then call `/api/languages` to verify the change is reflected.
-
-10. **DB verify (optional)**
-    Connect to the DB and confirm `submissions` rows are created with expected statuses.
-
----
+> **You can now copy-paste this entire file into your GitHub `README.md`.**
