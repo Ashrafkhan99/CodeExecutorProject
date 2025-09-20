@@ -15,3 +15,6 @@ flowchart LR
   API --> Docker
   API --> Metrics
   API -.startup.-> Flyway
+```mermaid
+
+## Database ER Diagram
