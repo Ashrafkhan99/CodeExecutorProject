@@ -1,6 +1,4 @@
-
 ## System Flowchart
-
 ```mermaid
 flowchart LR
   Client[Client: UI or API Consumer]
@@ -9,12 +7,8 @@ flowchart LR
   Docker[Docker Engine: Sandbox Containers]
   Metrics[(Prometheus / Actuator)]
   Flyway[Flyway: DB migrations]
-
   Client -->|REST JSON| API
   API --> DB
   API --> Docker
   API --> Metrics
   API -.startup.-> Flyway
-```mermaid
-
-## Database ER Diagram
