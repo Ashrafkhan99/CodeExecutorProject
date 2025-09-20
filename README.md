@@ -1,3 +1,4 @@
+```mermaid
 flowchart LR
   Client[Client (UI / API Consumer)]
   API[Spring Boot API\n(Controllers, Filters, Services)]
