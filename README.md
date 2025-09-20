@@ -171,6 +171,9 @@ curl -s -X POST http://localhost:8080/api/execute \
 ## 🔧 Technical Details
 
 ### Architecture Overview
+---
+
+### ✅ HLD (Flowchart)
 
 ```mermaid
 flowchart LR
@@ -194,6 +197,50 @@ flowchart LR
     API --- METRICS[(Actuator + Prometheus)]
 ```
 
+---
+
+### ✅ Fixed ER Diagram (Mermaid-compatible)
+
+> Note: Keep attribute comments out of the braces; GitHub’s Mermaid ER parser is strict.
+
+```mermaid
+erDiagram
+    USERS ||--o{ SUBMISSIONS : has
+    LANGUAGES ||--o{ SUBMISSIONS : used_by
+
+    USERS {
+      UUID id PK
+      VARCHAR email
+      VARCHAR password_hash
+      VARCHAR role
+      TIMESTAMP created_at
+    }
+
+    LANGUAGES {
+      VARCHAR code PK
+      VARCHAR display_name
+      VARCHAR image
+      VARCHAR file_name
+      VARCHAR compile_cmd
+      VARCHAR run_cmd
+      VARCHAR version
+      BOOLEAN enabled
+    }
+
+    SUBMISSIONS {
+      UUID id PK
+      UUID user_id FK
+      VARCHAR language_code FK
+      TEXT source_code
+      TEXT stdin
+      TEXT stdout
+      TEXT stderr
+      VARCHAR status
+      INT exec_time_ms
+      INT memory_kb
+      TIMESTAMP created_at
+    }
+```
 
 * **API**: `/api/auth/*`, `/api/languages`, `/api/execute`, `/api/admin/*`
 * **Security chain**: `RequestId` → `JWT` → `RateLimit` → `RequestLogging`
