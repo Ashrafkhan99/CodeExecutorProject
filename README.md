@@ -535,5 +535,3 @@ management:
         include: health,info,metrics,prometheus
       base-path: /actuator
 ```
-
-> **You can now copy-paste this entire file into your GitHub `README.md`.**
