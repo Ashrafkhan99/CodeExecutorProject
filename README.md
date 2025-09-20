@@ -13,3 +13,46 @@ API --> Docker
 API --> Metrics
 API -.startup.-> Flyway
 ```
+
+
+
+## Database ER Diagram
+
+```mermaid
+erDiagram
+USER ||--o{ SUBMISSION : has
+EXECLANGUAGE ||--o{ SUBMISSION : used_by
+
+USER {
+UUID id
+string email
+string password_hash
+string role
+timestamp created_at
+}
+
+EXECLANGUAGE {
+string code
+string display_name
+string image
+string file_name
+string compile_cmd
+string run_cmd
+string version
+boolean enabled
+}
+
+SUBMISSION {
+UUID id
+UUID user_id
+string language_code
+text source
+text stdin
+text stdout
+text stderr
+string status
+int exec_time_ms
+int memory_kb
+timestamp created_at
+}
+```
