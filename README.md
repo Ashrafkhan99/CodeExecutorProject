@@ -173,20 +173,22 @@ curl -s -X POST http://localhost:8080/api/execute \
 ### Architecture Overview
 ---
 
-### ✅ HLD (Flowchart)
+You're running into a Mermaid parsing quirk on GitHub: **parentheses inside node labels** can be misread as shape syntax, and raw `&` also needs escaping. I’ve removed the parentheses, replaced `&` with `&amp;`, and kept line breaks with `<br>` (which GitHub’s Mermaid accepts).
+
+### ✅ Drop-in fixed HLD (GitHub-compatible)
 
 ```mermaid
 flowchart LR
-    Client[Client / Frontend<br/>Swagger UI, Postman] -->|HTTPS| API[(Spring Boot REST API)]
-    subgraph "API Layer"
-      API --> SEC[JWT Auth + Filters<br/>(RequestId, Logging, RateLimit)]
-      API --> LANG[Language Service<br/>list enabled languages]
-      API --> EXE[Execute Service<br/>POST /api/execute]
-      SEC --> ADM[Admin Endpoints<br/>languages & submissions]
+    Client[Client / Frontend<br>Swagger UI, Postman] -->|HTTPS| API[(Spring Boot REST API)]
+    subgraph API_Layer["API Layer"]
+      API --> SEC[JWT Auth + Filters<br>RequestId · Logging · RateLimit]
+      API --> LANG[Language Service<br>List enabled languages]
+      API --> EXE[Execute Service<br>POST /api/execute]
+      SEC --> ADM[Admin Endpoints<br>Languages and submissions]
     end
 
-    EXE --> ORCH[Execution Orchestrator<br/>ThreadPool + Semaphores + Fairness]
-    ORCH --> RUN[Docker Runner<br/>spawn language container per request]
+    EXE --> ORCH[Execution Orchestrator<br>ThreadPool · Semaphores · Fairness]
+    ORCH --> RUN[Docker Runner<br>Spawn language container per request]
 
     RUN -.->|docker.sock| DOCKER[(Host Docker Daemon)]
     DOCKER --> PY[(Python 3.11 non-root image)]
@@ -196,8 +198,6 @@ flowchart LR
     API --- DB[(PostgreSQL 16)]
     API --- METRICS[(Actuator + Prometheus)]
 ```
-
----
 
 ### ✅ ER Diagram (Mermaid-compatible)
 
