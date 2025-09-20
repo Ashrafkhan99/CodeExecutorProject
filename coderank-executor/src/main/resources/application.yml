@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: coderank-executor
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate # Flyway manages the schema
+  flyway:
+    enabled: true
+  profiles:
+    active: dev
+
+server:
+  port: 8080

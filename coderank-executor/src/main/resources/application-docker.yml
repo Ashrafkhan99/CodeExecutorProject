@@ -1,0 +1,54 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://db:5432/coderank
+    username: coderank
+    password: coderank
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 20000
+  jpa:
+    properties:
+      hibernate.format_sql: false
+      hibernate.jdbc.time_zone: UTC
+
+logging:
+  level:
+    org.flywaydb: info
+
+app:
+  security:
+    jwt:
+      issuer: coderank
+      expiryMinutes: 30
+      secret: ${CODERANK_JWT_SECRET:UmFuZG9tU3VwZXJMb25nU2VjcmV0S2V5MTIzNDU2Nzg5MDEyMzQ1Njc4OTA=}
+
+  exec:
+    timeoutSeconds: 5
+    overallTimeoutSeconds: 12
+    memory: 256m
+    cpus: 0.5
+    pidsLimit: 128
+    tmpfsSizeMb: 64
+    concurrent:
+      maxConcurrent: 6
+      queueCapacity: 20
+      submitTimeoutMs: 150
+      permitTimeoutMs: 200
+      perUserMaxInFlight: 2
+
+  ratelimit:
+    execute:
+      perMinute: 30
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: never
+  metrics:
+    tags:
+      application: coderank-executor
