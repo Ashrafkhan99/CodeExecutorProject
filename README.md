@@ -12,3 +12,4 @@ API --> DB
 API --> Docker
 API --> Metrics
 API -.startup.-> Flyway
+```
