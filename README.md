@@ -11,14 +11,6 @@
 
 ---
 
-## Why you’ll care (in 30 seconds)
-
-**Non-technical readers:** This service lets people paste code (e.g., Python), runs it safely in an isolated “sandbox”, and returns the output. It’s designed so one user’s code cannot harm the system or other users.
-
-**Developers & contributors:** It’s a Spring Boot + PostgreSQL system that spawns per-request language containers (Docker) with tight time/memory limits, JWT authentication, simple admin endpoints, rate-limiting, and Prometheus metrics, all packaged with Docker Compose.
-
----
-
 ## What it does & why it exists
 
 * **What it does (plain English):** Accepts code via a REST API, runs it inside a locked-down Docker container for the chosen language, and returns `stdout`, `stderr`, and a status like `SUCCESS` or `TIMEOUT`.
