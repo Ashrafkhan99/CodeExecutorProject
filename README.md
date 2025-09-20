@@ -199,7 +199,7 @@ flowchart LR
 
 ---
 
-### ✅ Fixed ER Diagram (Mermaid-compatible)
+### ✅ ER Diagram (Mermaid-compatible)
 
 > Note: Keep attribute comments out of the braces; GitHub’s Mermaid ER parser is strict.
 
@@ -246,47 +246,6 @@ erDiagram
 * **Security chain**: `RequestId` → `JWT` → `RateLimit` → `RequestLogging`
 * **Concurrency**: Bounded thread-pool + semaphores to cap total and per-user in-flight runs
 * **Runtime**: Each execution writes source to container, optional compile, then runs with a hard timeout
-
-### Entity-Relationship (ER) Diagram
-
-```mermaid
-erDiagram
-    USERS ||--o{ SUBMISSIONS : "has many"
-    LANGUAGES ||--o{ SUBMISSIONS : "used by"
-
-    USERS {
-      UUID id PK
-      VARCHAR email "unique"
-      VARCHAR password_hash
-      VARCHAR role "e.g. USER/ADMIN"
-      TIMESTAMP created_at
-    }
-
-    LANGUAGES {
-      VARCHAR code PK "e.g. python, java, cpp"
-      VARCHAR display_name
-      VARCHAR image "docker tag"
-      VARCHAR file_name "main file in sandbox"
-      VARCHAR compile_cmd "nullable"
-      VARCHAR run_cmd
-      VARCHAR version
-      BOOLEAN enabled
-    }
-
-    SUBMISSIONS {
-      UUID id PK
-      UUID user_id FK "nullable for public runs"
-      VARCHAR language_code FK
-      TEXT source_code
-      TEXT stdin
-      TEXT stdout
-      TEXT stderr
-      VARCHAR status "SUCCESS/COMPILE_ERROR/..."
-      INTEGER exec_time_ms
-      INTEGER memory_kb
-      TIMESTAMP created_at
-    }
-```
 
 > This matches `V1__init.sql` and the `@Entity` classes (`User`, `ExecLanguage`, `Submission`).
 
