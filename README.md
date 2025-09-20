@@ -12,10 +12,8 @@ flowchart LR
   API --> Docker
   API --> Metrics
   API -.startup.-> Flyway
-```mermaid
 
 
-```mermaid
 erDiagram
   USER ||--o{ SUBMISSION : has
   EXECLANGUAGE ||--o{ SUBMISSION : used_by
