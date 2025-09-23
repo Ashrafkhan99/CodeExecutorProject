@@ -438,11 +438,6 @@ UPDATE users SET role = 'ADMIN' WHERE email = 'me@example.com';
 
 We welcome contributions!
 
-### For New Contributors
-
-1. **Report bugs:** Found something broken? [Open an issue](#).
-2. **Suggest features:** Have an idea? [Start a discussion](#).
-3. **Improve docs:** See unclear instructions? Submit a fix!
 
 ### For Developers
 
