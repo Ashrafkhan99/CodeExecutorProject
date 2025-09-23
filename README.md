@@ -171,6 +171,19 @@ curl -s -X POST http://localhost:8080/api/execute \
     "language":"cpp",
     "source":"#include <iostream>\nint main(){std::cout<<\"Hi\";}"
   }'
+
+#RateLimiter Test
+for i in {1..40}; do
+  echo "Request $i"
+  curl -s -o /dev/null -w "%{http_code}\n" \
+    -X POST http://localhost:8080/api/execute \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "language":"java",
+      "source":"public class Main { public static void main(String[] args){ System.out.println(42); } }"
+    }'
+done
 ```
 
 > **Statuses you may see:** `SUCCESS`, `COMPILE_ERROR`, `RUNTIME_ERROR`, `TIMEOUT`, `INTERNAL_ERROR`.
