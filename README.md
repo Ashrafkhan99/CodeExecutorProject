@@ -146,6 +146,23 @@ curl -s -X POST http://localhost:8080/api/execute \
     "source":"public class Main{public static void main(String[]a){System.out.println(\"Hi\");}}"
   }'
 
+curl -X POST http://localhost:8080/api/execute \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "java",
+    "source": "public class Main { public static void main(String[] args) { int x = 5/0; } }"
+  }'
+
+curl -X POST http://localhost:8080/api/execute \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "java",
+    "source": "import java.util.*; public class Main { public static void main(String[] args) { Scanner sc = new Scanner(System.in); int a = sc.nextInt(); int b = sc.nextInt(); System.out.println(a+b); } }",
+    "stdin": "10 32"
+  }'
+
 # C++
 curl -s -X POST http://localhost:8080/api/execute \
   -H 'Content-Type: application/json' \
