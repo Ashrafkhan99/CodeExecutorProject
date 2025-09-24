@@ -44,3 +44,4 @@ public class UpdateLanguageRequest {
     public Boolean getEnabled() { return enabled; }
     public void setEnabled(Boolean enabled) { this.enabled = enabled; }
 }
+
