@@ -38,6 +38,12 @@
 
 ---
 
+## Video Demo:
+https://github.com/user-attachments/assets/77460bb7-c15f-4c26-b3c2-16b17284e483
+
+https://github.com/user-attachments/assets/699c61d6-99dd-45e1-a85d-429ae43f324c
+
+
 ## 🚀 Quick Start
 
 ### What You’ll Need
