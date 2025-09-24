@@ -201,8 +201,6 @@ done
 ### Architecture Overview
 ---
 
-You're running into a Mermaid parsing quirk on GitHub: **parentheses inside node labels** can be misread as shape syntax, and raw `&` also needs escaping. I’ve removed the parentheses, replaced `&` with `&amp;`, and kept line breaks with `<br>` (which GitHub’s Mermaid accepts).
-
 ### ✅ Drop-in fixed HLD (GitHub-compatible)
 
 ```mermaid
